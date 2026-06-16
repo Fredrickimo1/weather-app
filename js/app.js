@@ -238,3 +238,35 @@ function formatDate(date) {
     year:    "numeric"
   });
 }
+
+celsiusBtn.addEventListener("click", () => {
+  if (currentUnit === "celsius") return; // already active, do nothing
+
+  currentUnit = "celsius";
+
+  // Swap active style between buttons
+  celsiusBtn.classList.add("active");
+  fahrenheitBtn.classList.remove("active");
+
+  // Re-render with stored data — no new API call needed
+  if (lastWeatherData) {
+    renderCurrentWeather(lastWeatherData.weatherData);
+    renderForecast(lastWeatherData.forecastData);
+  }
+});
+
+fahrenheitBtn.addEventListener("click", () => {
+  if (currentUnit === "fahrenheit") return; // already active, do nothing
+
+  currentUnit = "fahrenheit";
+
+  // Swap active style between buttons
+  fahrenheitBtn.classList.add("active");
+  celsiusBtn.classList.remove("active");
+
+  // Re-render with stored data — no new API call needed
+  if (lastWeatherData) {
+    renderCurrentWeather(lastWeatherData.weatherData);
+    renderForecast(lastWeatherData.forecastData);
+  }
+});
