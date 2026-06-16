@@ -148,3 +148,93 @@ function hideEmptyState()      { emptyState.classList.add("hidden"); }
 
 function showError()           { errorMsg.classList.remove("hidden"); }
 function hideError()           { errorMsg.classList.add("hidden"); }
+
+
+function renderCurrentWeather(data) {
+  // Location
+  cityName.textContent    = data.name;
+  countryName.textContent = data.sys.country;
+  currentDate.textContent = formatDate(new Date());
+
+  // Icon & description
+  const iconCode        = data.weather[0].icon;
+  weatherIcon.src       = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+  weatherIcon.alt       = data.weather[0].description;
+  weatherDesc.textContent = data.weather[0].description;
+
+  // Temperature
+  const tempC = Math.round(data.main.temp);
+  temperature.textContent = currentUnit === "celsius"
+    ? `${tempC}°C`
+    : `${toFahrenheit(tempC)}°F`;
+
+  // Stats
+  humidity.textContent  = `${data.main.humidity}%`;
+  windSpeed.textContent = `${Math.round(data.wind.speed * 3.6)} km/h`;
+
+  const feelsC = Math.round(data.main.feels_like);
+  feelsLike.textContent = currentUnit === "celsius"
+    ? `${feelsC}°C`
+    : `${toFahrenheit(feelsC)}°F`;
+
+  visibility.textContent = `${(data.visibility / 1000).toFixed(1)} km`;
+}
+
+
+function renderForecast(data) {
+  // OWM forecast returns readings every 3 hours (40 total)
+  // We filter to get one reading per day at around midday (12:00)
+  const dailyList = data.list.filter(item =>
+    item.dt_txt.includes("12:00:00")
+  );
+
+  // Clear previous forecast cards
+  forecastGrid.innerHTML = "";
+
+  // Build one card per day
+  dailyList.slice(0, 5).forEach(day => {
+    const date     = new Date(day.dt * 1000);
+    const dayName  = date.toLocaleDateString("en-US", { weekday: "short" });
+    const iconCode = day.weather[0].icon;
+    const desc     = day.weather[0].description;
+    const highC    = Math.round(day.main.temp_max);
+    const lowC     = Math.round(day.main.temp_min);
+
+    const high = currentUnit === "celsius" ? `${highC}°C` : `${toFahrenheit(highC)}°F`;
+    const low  = currentUnit === "celsius" ? `${lowC}°C`  : `${toFahrenheit(lowC)}°F`;
+
+    const card = document.createElement("div");
+    card.classList.add("forecast-card");
+    card.innerHTML = `
+      <p class="forecast-day">${dayName}</p>
+      <img
+        src="https://openweathermap.org/img/wn/${iconCode}@2x.png"
+        alt="${desc}"
+        class="forecast-icon"
+      />
+      <p class="forecast-desc">${desc}</p>
+      <div class="forecast-temps">
+        <span class="forecast-high">${high}</span>
+        <span class="forecast-low">${low}</span>
+      </div>
+    `;
+
+    forecastGrid.appendChild(card);
+  });
+}
+
+
+// Convert Celsius to Fahrenheit
+function toFahrenheit(c) {
+  return Math.round((c * 9/5) + 32);
+}
+
+// Format date as: Monday, 16 June 2026
+function formatDate(date) {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    day:     "numeric",
+    month:   "long",
+    year:    "numeric"
+  });
+}
