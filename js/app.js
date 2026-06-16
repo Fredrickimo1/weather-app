@@ -1,5 +1,5 @@
 
-const API_KEY = "YOUR_API_KEY_HERE"; // TODO: insert real API key or use env-based injection for production
+const API_KEY = "ef2cefb22c83edfc57ae77c1da81a21f"; // TODO: insert real API key or use env-based injection for production
 const BASE_URL = "https://api.openweathermap.org/data/2.5"; // OpenWeatherMap v2.5 endpoints
 
 
@@ -67,3 +67,84 @@ function updateThemeIcon(theme) {
     themeIcon.classList.add("fa-moon");
   }
 }
+
+// Click the Search button
+searchBtn.addEventListener("click", () => {
+  const city = cityInput.value.trim();
+  if (city) handleSearch(city);
+});
+
+// Press Enter key in the input field
+cityInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const city = cityInput.value.trim();
+    if (city) handleSearch(city);
+  }
+});
+
+
+async function handleSearch(city) {
+  // Reset UI before new search
+  hideError();
+  showLoader();
+  hideWeatherContent();
+  hideEmptyState();
+
+  try {
+    // Fetch both current weather and forecast at the same time
+    const [weatherData, forecastData] = await Promise.all([
+      fetchCurrentWeather(city),
+      fetchForecast(city)
+    ]);
+
+    // Store data globally for unit switching later
+    lastWeatherData = { weatherData, forecastData };
+
+    // Render everything on screen
+    renderCurrentWeather(weatherData);
+    renderForecast(forecastData);
+
+    hideLoader();
+    showWeatherContent();
+
+  } catch (error) {
+    hideLoader();
+    showEmptyState();
+    showError();
+  }
+}
+
+// Fetch current weather for a city
+async function fetchCurrentWeather(city) {
+  const url = `${BASE_URL}/weather?q=${city}&appid=${API_KEY}&units=metric`;
+  const response = await fetch(url);
+
+  if (!response.ok) throw new Error("City not found");
+
+  const data = await response.json();
+  return data;
+}
+
+// Fetch 5-day forecast for a city
+async function fetchForecast(city) {
+  const url = `${BASE_URL}/forecast?q=${city}&appid=${API_KEY}&units=metric`;
+  const response = await fetch(url);
+
+  if (!response.ok) throw new Error("Forecast not found");
+
+  const data = await response.json();
+  return data;
+}
+
+
+function showLoader()          { loader.classList.remove("hidden"); }
+function hideLoader()          { loader.classList.add("hidden"); }
+
+function showWeatherContent()  { weatherContent.classList.remove("hidden"); }
+function hideWeatherContent()  { weatherContent.classList.add("hidden"); }
+
+function showEmptyState()      { emptyState.classList.remove("hidden"); }
+function hideEmptyState()      { emptyState.classList.add("hidden"); }
+
+function showError()           { errorMsg.classList.remove("hidden"); }
+function hideError()           { errorMsg.classList.add("hidden"); }
