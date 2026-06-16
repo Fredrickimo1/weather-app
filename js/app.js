@@ -253,28 +253,45 @@ function renderCurrentWeather(data) {
  * @param {Object} data - OpenWeatherMap forecast response object
  * @property {Array} data.list - Array of 40 forecast readings (3-hour intervals)
  */
+
+
 function renderForecast(data) {
-  // Extract one reading per day at around midday (12:00 PM UTC)
-  // This ensures consistent temperatures (peak of day) for all 5 days
-  const dailyList = data.list.filter(item =>
-    item.dt_txt.includes("12:00:00")
-  );
+  // Group all 40 readings by day (YYYY-MM-DD)
+  const grouped = {};
+
+  data.list.forEach(item => {
+    const date = item.dt_txt.split(" ")[0]; // e.g. "2026-06-17"
+    if (!grouped[date]) grouped[date] = [];
+    grouped[date].push(item);
+  });
 
   // Clear previous forecast cards
   forecastGrid.innerHTML = "";
 
-  // Build one card per day
-  dailyList.slice(0, 5).forEach(day => {
-    const date     = new Date(day.dt * 1000);
-    const dayName  = date.toLocaleDateString("en-US", { weekday: "short" });
-    const iconCode = day.weather[0].icon;
-    const desc     = day.weather[0].description;
-    const highC    = Math.round(day.main.temp_max);
-    const lowC     = Math.round(day.main.temp_min);
+  // Take only 5 days
+  const days = Object.keys(grouped).slice(0, 5);
 
-    // Convert temperatures based on current unit preference (no re-fetch needed)
+  days.forEach((dateKey, index) => {
+    const readings  = grouped[dateKey];
+
+    // Get the midday reading for icon & description
+    const midday = readings.find(r => r.dt_txt.includes("12:00:00")) || readings[0];
+
+    // Get true high and low across ALL readings for that day
+    const highC = Math.round(Math.max(...readings.map(r => r.main.temp_max)));
+    const lowC  = Math.round(Math.min(...readings.map(r => r.main.temp_min)));
+
     const high = currentUnit === "celsius" ? `${highC}°C` : `${toFahrenheit(highC)}°F`;
     const low  = currentUnit === "celsius" ? `${lowC}°C`  : `${toFahrenheit(lowC)}°F`;
+
+    const iconCode = midday.weather[0].icon;
+    const desc     = midday.weather[0].description;
+
+    // Label first card "Today", rest get short day name
+    const date    = new Date(dateKey + "T12:00:00");
+    const dayName = index === 0
+      ? "Today"
+      : date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
 
     const card = document.createElement("div");
     card.classList.add("forecast-card");
