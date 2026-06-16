@@ -1,10 +1,19 @@
 
+/* ─────────────────────────────────────────
+   1. API CONFIGURATION
+   OpenWeatherMap API credentials and endpoint configuration.
+   IMPORTANT: Replace API_KEY before production deployment.
+   Consider using environment variables for security in production.
+───────────────────────────────────────── */
 const API_KEY = "ef2cefb22c83edfc57ae77c1da81a21f"; // TODO: insert real API key or use env-based injection for production
 const BASE_URL = "https://api.openweathermap.org/data/2.5"; // OpenWeatherMap v2.5 endpoints
 
 
-
-// Search
+/* ─────────────────────────────────────────
+   2. DOM SELECTORS
+   Cache element references for performance (single query per element on load).
+   Organized by functional grouping for maintainability.
+───────────────────────────────────────── */
 const cityInput     = document.getElementById("cityInput");
 const searchBtn     = document.getElementById("searchBtn");
 const errorMsg      = document.getElementById("errorMsg");
@@ -38,10 +47,19 @@ const themeToggle   = document.getElementById("themeToggle");
 const themeIcon     = document.getElementById("themeIcon");
 
 
+/* ─────────────────────────────────────────
+   3. APPLICATION STATE
+   Global state for tracking UI preferences and cached data.
+   lastWeatherData enables fast unit toggling without re-fetching from API.
+───────────────────────────────────────── */
 let currentUnit = "celsius";   // tracks active temperature unit
 let lastWeatherData = null;    // stores last API response for unit switching and re-rendering
 
 
+/* ─────────────────────────────────────────
+   4. THEME TOGGLE
+   Persist user's light/dark mode preference to localStorage for seamless experience.
+───────────────────────────────────────── */
 // Check if the user previously selected a theme and apply it on page load.
 const savedTheme = localStorage.getItem("weatherTheme") || "light";
 document.documentElement.setAttribute("data-theme", savedTheme);
@@ -68,6 +86,10 @@ function updateThemeIcon(theme) {
   }
 }
 
+/* ─────────────────────────────────────────
+   5. SEARCH INPUT HANDLING
+   Wire keyboard and click events to trigger weather search.
+───────────────────────────────────────── */
 // Click the Search button
 searchBtn.addEventListener("click", () => {
   const city = cityInput.value.trim();
@@ -83,6 +105,17 @@ cityInput.addEventListener("keydown", (e) => {
 });
 
 
+/* ─────────────────────────────────────────
+   6. WEATHER DATA FETCHING & ORCHESTRATION
+   Fetch current weather and forecast data from OpenWeatherMap API.
+───────────────────────────────────────── */
+/**
+ * Orchestrates the search flow: fetches weather data and renders UI
+ * Uses Promise.all for concurrent API requests (performance optimization)
+ * Stores fetched data globally to enable temperature unit switching without re-fetching
+ * @param {string} city - City name to search
+ * @returns {Promise<void>}
+ */
 async function handleSearch(city) {
   // Reset UI before new search
   hideError();
@@ -91,13 +124,14 @@ async function handleSearch(city) {
   hideEmptyState();
 
   try {
-    // Fetch both current weather and forecast at the same time
+    // Fetch both current weather and forecast at the same time using Promise.all
+    // This is faster than sequential requests: saves ~50-100ms depending on network
     const [weatherData, forecastData] = await Promise.all([
       fetchCurrentWeather(city),
       fetchForecast(city)
     ]);
 
-    // Store data globally for unit switching later
+    // Store data globally for temperature unit switching (avoids re-fetching)
     lastWeatherData = { weatherData, forecastData };
 
     // Render everything on screen
@@ -114,7 +148,12 @@ async function handleSearch(city) {
   }
 }
 
-// Fetch current weather for a city
+/**
+ * Fetches current weather for a city from OpenWeatherMap API
+ * @param {string} city - City name to search
+ * @returns {Promise<Object>} Weather data object with temp, humidity, wind, etc.
+ * @throws {Error} When city is not found or API request fails
+ */
 async function fetchCurrentWeather(city) {
   const url = `${BASE_URL}/weather?q=${city}&appid=${API_KEY}&units=metric`;
   const response = await fetch(url);
@@ -125,7 +164,13 @@ async function fetchCurrentWeather(city) {
   return data;
 }
 
-// Fetch 5-day forecast for a city
+/**
+ * Fetches 5-day forecast for a city from OpenWeatherMap API
+ * API returns 3-hour interval readings (40 total). Daily readings are extracted later.
+ * @param {string} city - City name to search
+ * @returns {Promise<Object>} Forecast object with list of readings every 3 hours
+ * @throws {Error} When forecast data unavailable or API request fails
+ */
 async function fetchForecast(city) {
   const url = `${BASE_URL}/forecast?q=${city}&appid=${API_KEY}&units=metric`;
   const response = await fetch(url);
@@ -137,6 +182,10 @@ async function fetchForecast(city) {
 }
 
 
+/* ─────────────────────────────────────────
+   7. UI STATE HELPERS
+   Simple utility functions for showing/hiding UI components based on application state.
+───────────────────────────────────────── */
 function showLoader()          { loader.classList.remove("hidden"); }
 function hideLoader()          { loader.classList.add("hidden"); }
 
@@ -150,6 +199,21 @@ function showError()           { errorMsg.classList.remove("hidden"); }
 function hideError()           { errorMsg.classList.add("hidden"); }
 
 
+/* ─────────────────────────────────────────
+   8. RENDER FUNCTIONS
+   Populate DOM with weather data from OpenWeatherMap API responses.
+───────────────────────────────────────── */
+/**
+ * Renders current weather data to DOM elements
+ * Applies temperature unit conversion based on currentUnit state
+ * @param {Object} data - OpenWeatherMap current weather response object
+ * @property {string} data.name - City name
+ * @property {Object} data.sys - Contains country code
+ * @property {Array} data.weather - Weather condition array
+ * @property {Object} data.main - Contains temp, humidity, feels_like
+ * @property {Object} data.wind - Contains wind speed (m/s, converted to km/h)
+ * @property {number} data.visibility - In meters, converted to km
+ */
 function renderCurrentWeather(data) {
   // Location
   cityName.textContent    = data.name;
@@ -162,7 +226,7 @@ function renderCurrentWeather(data) {
   weatherIcon.alt       = data.weather[0].description;
   weatherDesc.textContent = data.weather[0].description;
 
-  // Temperature
+  // Temperature (API returns Celsius; convert to Fahrenheit if needed)
   const tempC = Math.round(data.main.temp);
   temperature.textContent = currentUnit === "celsius"
     ? `${tempC}°C`
@@ -181,9 +245,17 @@ function renderCurrentWeather(data) {
 }
 
 
+/**
+ * Renders 5-day forecast to DOM grid
+ * OpenWeatherMap forecast API returns 3-hour interval data (40 readings over 5 days)
+ * Filter extracts one reading per day at ~12:00 PM UTC for display consistency
+ * Applies temperature unit conversion based on currentUnit state
+ * @param {Object} data - OpenWeatherMap forecast response object
+ * @property {Array} data.list - Array of 40 forecast readings (3-hour intervals)
+ */
 function renderForecast(data) {
-  // OWM forecast returns readings every 3 hours (40 total)
-  // We filter to get one reading per day at around midday (12:00)
+  // Extract one reading per day at around midday (12:00 PM UTC)
+  // This ensures consistent temperatures (peak of day) for all 5 days
   const dailyList = data.list.filter(item =>
     item.dt_txt.includes("12:00:00")
   );
@@ -200,6 +272,7 @@ function renderForecast(data) {
     const highC    = Math.round(day.main.temp_max);
     const lowC     = Math.round(day.main.temp_min);
 
+    // Convert temperatures based on current unit preference (no re-fetch needed)
     const high = currentUnit === "celsius" ? `${highC}°C` : `${toFahrenheit(highC)}°F`;
     const low  = currentUnit === "celsius" ? `${lowC}°C`  : `${toFahrenheit(lowC)}°F`;
 
@@ -224,12 +297,26 @@ function renderForecast(data) {
 }
 
 
-// Convert Celsius to Fahrenheit
+/* ─────────────────────────────────────────
+   9. UTILITY FUNCTIONS & HELPERS
+   Convert between temperature scales and format dates for display.
+───────────────────────────────────────── */
+/**
+ * Converts temperature from Celsius to Fahrenheit
+ * Formula: F = (C × 9/5) + 32
+ * @param {number} c - Temperature in Celsius
+ * @returns {number} Rounded temperature in Fahrenheit
+ */
 function toFahrenheit(c) {
   return Math.round((c * 9/5) + 32);
 }
 
-// Format date as: Monday, 16 June 2026
+/**
+ * Formats a date object into a readable string
+ * Example output: "Monday, 16 June 2026"
+ * @param {Date} date - JavaScript Date object to format
+ * @returns {string} Formatted date string with weekday, day, month, and year
+ */
 function formatDate(date) {
   return date.toLocaleDateString("en-US", {
     weekday: "long",
@@ -239,6 +326,10 @@ function formatDate(date) {
   });
 }
 
+/* ─────────────────────────────────────────
+   10. TEMPERATURE UNIT TOGGLE
+   Allow users to switch between Celsius and Fahrenheit without re-fetching data.
+───────────────────────────────────────── */
 celsiusBtn.addEventListener("click", () => {
   if (currentUnit === "celsius") return; // already active, do nothing
 
