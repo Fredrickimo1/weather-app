@@ -5,7 +5,7 @@
    IMPORTANT: Replace API_KEY before production deployment.
    Consider using environment variables for security in production.
 ───────────────────────────────────────── */
-const API_KEY = "ef2cefb22c83edfc57ae77c1da81a21f"; // TODO: insert real API key or use env-based injection for production
+const API_KEY = CONFIG.API_KEY; // TODO: insert real API key or use env-based injection for production
 const BASE_URL = "https://api.openweathermap.org/data/2.5"; // OpenWeatherMap v2.5 endpoints
 
 
