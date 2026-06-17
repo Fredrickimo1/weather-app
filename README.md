@@ -43,15 +43,21 @@ No frameworks, no build tools, just the fundamentals.
 ## Project Structure
 
 weather-app/
-├── index.html
-├── .gitignore
-├── css/
-│   └── style.css
-└── js/
-    ├── config.js     # API key (gitignored, not in repo)
-    └── app.js
 
-    ---
+├── index.html
+
+├── .gitignore
+
+├── css/
+
+│   └── style.css
+
+└── js/
+
+├── config.js     # API key (gitignored, not in repo)
+
+└── app.js
+  
 
 ## Setup & Installation
 
